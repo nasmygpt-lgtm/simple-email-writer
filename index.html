@@ -33,6 +33,7 @@
     font-family: inherit;
   }
   textarea { resize: vertical; min-height: 80px; }
+  .hint { font-size: 12px; color: #888; margin-top: 4px; }
   .row { display: flex; gap: 20px; flex-wrap: wrap; align-items: center; margin-top: 14px; }
   .toggle { display: flex; align-items: center; gap: 8px; font-size: 14px; }
   button {
@@ -69,13 +70,14 @@
 <body>
   <div class="wrap">
     <h1>Simple Email Writer</h1>
-    <p class="sub">Write a few words about what you need. Get a clean, simple email.</p>
+    <p class="sub">Write a few words about what you need. It builds a proper email for you.</p>
 
     <label for="to">To (name) — optional</label>
     <input type="text" id="to" placeholder="e.g. John">
 
     <label for="idea">What do you want to say?</label>
-    <textarea id="idea" placeholder="e.g. ask for leave on friday"></textarea>
+    <textarea id="idea" placeholder="e.g. leave on friday   |   meeting tomorrow 3pm   |   thanks for help   |   sorry i was late"></textarea>
+    <div class="hint">Just type a few rough words. It will turn them into full sentences.</div>
 
     <label for="from">Your name — optional</label>
     <input type="text" id="from" placeholder="e.g. Sam">
@@ -94,6 +96,23 @@
   </div>
 
 <script>
+/*
+  This does NOT just repeat your words.
+  It reads your rough words, guesses what you mean (leave, meeting,
+  thanks, sorry, follow up, request, etc.) and writes proper sentences.
+*/
+
+function detectType(text) {
+  var t = text.toLowerCase();
+  if (/(leave|day off|off on|vacation|holiday|sick|absent|wfh|work from home)/.test(t)) return 'leave';
+  if (/(meet|meeting|call|catch up|discuss|schedule|appointment)/.test(t)) return 'meeting';
+  if (/(thank|thanks|thank you|grateful|appreciate)/.test(t)) return 'thanks';
+  if (/(sorry|apolog|apologise|apologize|my mistake|late)/.test(t)) return 'apology';
+  if (/(follow up|following up|reminder|remind|any update|status|checking in)/.test(t)) return 'followup';
+  if (/(request|need|please send|can you|could you|share|provide|approve|approval)/.test(t)) return 'request';
+  return 'general';
+}
+
 function makeEmail() {
   var to = document.getElementById('to').value.trim();
   var idea = document.getElementById('idea').value.trim();
@@ -109,41 +128,91 @@ function makeEmail() {
     return;
   }
 
-  // Capitalize the first letter of the idea
-  var body = idea.charAt(0).toUpperCase() + idea.slice(1);
-  if (!/[.!?]$/.test(body)) body += '.';
+  var name = to || 'there';
+  var sign = from || '[Your name]';
+  var topic = cleanTopic(idea);          // your words, tidied
+  var type = detectType(idea);
 
-  var greetName = to ? to : 'there';
-  var signName = from ? from : '';
-  var email = '';
+  var subject, greeting, bodyLines, closing;
 
-  if (pro) {
-    // More professional version
-    email += 'Subject: ' + shortSubject(idea) + '\n\n';
-    email += 'Dear ' + greetName + ',\n\n';
-    email += 'I hope you are doing well. I am writing to let you know that ' + lower(body) + '\n\n';
-    email += 'I would be grateful for your kind attention to this. Please let me know if you need any further information.\n\n';
-    email += 'Best regards,\n' + (signName || '[Your name]');
+  greeting = pro ? ('Dear ' + name + ',') : ('Hi ' + name + ',');
+
+  if (type === 'leave') {
+    subject = 'Leave Request';
+    bodyLines = pro
+      ? ['I would like to request leave regarding ' + topic + '.',
+         'Kindly let me know if this can be approved. I will make sure my work is handed over before I am away.']
+      : ['I would like to take leave for ' + topic + '.',
+         'Please let me know if that is okay. I will make sure everything is handled before I go.'];
+  } else if (type === 'meeting') {
+    subject = 'Meeting Request';
+    bodyLines = pro
+      ? ['I would like to arrange a meeting regarding ' + topic + '.',
+         'Please let me know a time that works for you and I will send an invite.']
+      : ['Can we set up a meeting about ' + topic + '?',
+         'Let me know a time that suits you and I will send an invite.'];
+  } else if (type === 'thanks') {
+    subject = 'Thank You';
+    bodyLines = pro
+      ? ['Thank you very much for ' + topic + '.',
+         'I really appreciate your time and support.']
+      : ['Thank you so much for ' + topic + '.',
+         'I really appreciate it.'];
+  } else if (type === 'apology') {
+    subject = 'Apology';
+    bodyLines = pro
+      ? ['Please accept my sincere apologies regarding ' + topic + '.',
+         'I understand the inconvenience caused and will make sure it does not happen again.']
+      : ['I am sorry about ' + topic + '.',
+         'It will not happen again.'];
+  } else if (type === 'followup') {
+    subject = 'Following Up';
+    bodyLines = pro
+      ? ['I am following up regarding ' + topic + '.',
+         'Could you please share an update when you have a moment?']
+      : ['Just following up on ' + topic + '.',
+         'Could you let me know where things stand?'];
+  } else if (type === 'request') {
+    subject = 'Request';
+    bodyLines = pro
+      ? ['I would like to request your help regarding ' + topic + '.',
+         'I would be grateful if you could assist when convenient.']
+      : ['Could you please help me with ' + topic + '?',
+         'Let me know if you need anything from my side.'];
   } else {
-    // Simple everyday version
-    email += 'Subject: ' + shortSubject(idea) + '\n\n';
-    email += 'Hi ' + greetName + ',\n\n';
-    email += body + '\n\n';
-    email += 'Please let me know. Thank you.\n\n';
-    email += 'Thanks,\n' + (signName || '[Your name]');
+    subject = makeSubject(idea);
+    bodyLines = pro
+      ? ['I am writing to you regarding ' + topic + '.',
+         'Please let me know if you need any further details.']
+      : ['I wanted to reach out about ' + topic + '.',
+         'Please let me know your thoughts.'];
   }
+
+  closing = pro ? 'Best regards,' : 'Thanks,';
+
+  var email = 'Subject: ' + subject + '\n\n';
+  email += greeting + '\n\n';
+  if (pro) email += 'I hope you are doing well.\n\n';
+  email += bodyLines.join('\n\n') + '\n\n';
+  email += closing + '\n' + sign;
 
   out.style.display = 'block';
   out.textContent = email;
   copyBtn.style.display = 'inline-block';
 }
 
-function lower(s) {
-  return s.charAt(0).toLowerCase() + s.slice(1);
+// tidy the rough words into a phrase that fits inside a sentence
+function cleanTopic(text) {
+  var t = text.trim().toLowerCase();
+  // drop leading command words so it reads naturally
+  t = t.replace(/^(please|kindly|i want to|i need to|i would like to|can you|could you|ask for|need|want)\s+/,'');
+  t = t.replace(/[.!?]+$/,'');
+  return t;
 }
 
-function shortSubject(text) {
-  var words = text.split(' ').slice(0, 6).join(' ');
+// build a short subject line from the words
+function makeSubject(text) {
+  var words = text.replace(/[.!?]+$/,'').split(/\s+/).slice(0, 6).join(' ');
   return words.charAt(0).toUpperCase() + words.slice(1);
 }
 
