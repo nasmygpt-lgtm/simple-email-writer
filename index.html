@@ -128,8 +128,8 @@ function makeEmail() {
     return;
   }
 
-  var name = to || 'there';
-  var sign = from || '[Your name]';
+  var name = to ? fixName(to) : 'there';
+  var sign = from ? fixName(from) : '[Your name]';
   var topic = cleanTopic(idea);          // your words, tidied
   var type = detectType(idea);
 
@@ -203,6 +203,7 @@ function makeEmail() {
 
 // tidy the rough words into a phrase that fits inside a sentence
 function cleanTopic(text) {
+  // no matter how it was typed (ALL CAPS, weird case), make it normal lower case
   var t = text.trim().toLowerCase();
   // drop leading command words so it reads naturally
   t = t.replace(/^(please|kindly|i want to|i need to|i would like to|can you|could you|ask for|need|want)\s+/,'');
@@ -210,10 +211,18 @@ function cleanTopic(text) {
   return t;
 }
 
-// build a short subject line from the words
+// build a short subject line from the words (proper Title-ish case)
 function makeSubject(text) {
-  var words = text.replace(/[.!?]+$/,'').split(/\s+/).slice(0, 6).join(' ');
-  return words.charAt(0).toUpperCase() + words.slice(1);
+  var words = text.replace(/[.!?]+$/,'').toLowerCase().split(/\s+/).slice(0, 6);
+  words = words.map(function(w){ return w.charAt(0).toUpperCase() + w.slice(1); });
+  return words.join(' ');
+}
+
+// make a name look proper: JOHN or john -> John
+function fixName(n) {
+  return n.toLowerCase().split(/\s+/).map(function(w){
+    return w.charAt(0).toUpperCase() + w.slice(1);
+  }).join(' ');
 }
 
 function copyText() {
