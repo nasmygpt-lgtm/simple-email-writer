@@ -70,7 +70,7 @@
 <body>
   <div class="wrap">
     <h1>Simple Email Writer</h1>
-    <p class="sub">Write a few words about what you need. It builds a proper email for you.</p>
+    <p class="sub">Type your message. It keeps your words and fixes the grammar and format.</p>
 
     <label for="to">To (name) — optional</label>
     <input type="text" id="to" placeholder="e.g. John">
@@ -102,17 +102,6 @@
   thanks, sorry, follow up, request, etc.) and writes proper sentences.
 */
 
-function detectType(text) {
-  var t = text.toLowerCase();
-  if (/(leave|day off|off on|vacation|holiday|sick|absent|wfh|work from home)/.test(t)) return 'leave';
-  if (/(meet|meeting|call|catch up|discuss|schedule|appointment)/.test(t)) return 'meeting';
-  if (/(thank|thanks|thank you|grateful|appreciate)/.test(t)) return 'thanks';
-  if (/(sorry|apolog|apologise|apologize|my mistake|late)/.test(t)) return 'apology';
-  if (/(follow up|following up|reminder|remind|any update|status|checking in)/.test(t)) return 'followup';
-  if (/(request|need|please send|can you|could you|share|provide|approve|approval)/.test(t)) return 'request';
-  return 'general';
-}
-
 function makeEmail() {
   var to = document.getElementById('to').value.trim();
   var idea = document.getElementById('idea').value.trim();
@@ -130,70 +119,17 @@ function makeEmail() {
 
   var name = to ? fixName(to) : 'there';
   var sign = from ? fixName(from) : '[Your name]';
-  var topic = cleanTopic(idea);          // your words, tidied
-  var type = detectType(idea);
 
-  var subject, greeting, bodyLines, closing;
+  // Keep the user's OWN words. Just fix grammar, spelling and capitalization.
+  var body = correctText(idea);
+  var subject = makeSubject(body);
 
-  greeting = pro ? ('Dear ' + name + ',') : ('Hi ' + name + ',');
-
-  if (type === 'leave') {
-    subject = 'Leave Request';
-    bodyLines = pro
-      ? ['I would like to request leave regarding ' + topic + '.',
-         'Kindly let me know if this can be approved. I will make sure my work is handed over before I am away.']
-      : ['I would like to take leave for ' + topic + '.',
-         'Please let me know if that is okay. I will make sure everything is handled before I go.'];
-  } else if (type === 'meeting') {
-    subject = 'Meeting Request';
-    bodyLines = pro
-      ? ['I would like to arrange a meeting regarding ' + topic + '.',
-         'Please let me know a time that works for you and I will send an invite.']
-      : ['Can we set up a meeting about ' + topic + '?',
-         'Let me know a time that suits you and I will send an invite.'];
-  } else if (type === 'thanks') {
-    subject = 'Thank You';
-    bodyLines = pro
-      ? ['Thank you very much for ' + topic + '.',
-         'I really appreciate your time and support.']
-      : ['Thank you so much for ' + topic + '.',
-         'I really appreciate it.'];
-  } else if (type === 'apology') {
-    subject = 'Apology';
-    bodyLines = pro
-      ? ['Please accept my sincere apologies regarding ' + topic + '.',
-         'I understand the inconvenience caused and will make sure it does not happen again.']
-      : ['I am sorry about ' + topic + '.',
-         'It will not happen again.'];
-  } else if (type === 'followup') {
-    subject = 'Following Up';
-    bodyLines = pro
-      ? ['I am following up regarding ' + topic + '.',
-         'Could you please share an update when you have a moment?']
-      : ['Just following up on ' + topic + '.',
-         'Could you let me know where things stand?'];
-  } else if (type === 'request') {
-    subject = 'Request';
-    bodyLines = pro
-      ? ['I would like to request your help regarding ' + topic + '.',
-         'I would be grateful if you could assist when convenient.']
-      : ['Could you please help me with ' + topic + '?',
-         'Let me know if you need anything from my side.'];
-  } else {
-    subject = makeSubject(idea);
-    bodyLines = pro
-      ? ['I am writing to you regarding ' + topic + '.',
-         'Please let me know if you need any further details.']
-      : ['I wanted to reach out about ' + topic + '.',
-         'Please let me know your thoughts.'];
-  }
-
-  closing = pro ? 'Best regards,' : 'Thanks,';
+  var greeting = pro ? ('Dear ' + name + ',') : ('Hi ' + name + ',');
+  var closing  = pro ? 'Best regards,' : 'Thanks,';
 
   var email = 'Subject: ' + subject + '\n\n';
   email += greeting + '\n\n';
-  if (pro) email += 'I hope you are doing well.\n\n';
-  email += bodyLines.join('\n\n') + '\n\n';
+  email += body + '\n\n';
   email += closing + '\n' + sign;
 
   out.style.display = 'block';
@@ -201,20 +137,56 @@ function makeEmail() {
   copyBtn.style.display = 'inline-block';
 }
 
-// tidy the rough words into a phrase that fits inside a sentence
-function cleanTopic(text) {
-  // no matter how it was typed (ALL CAPS, weird case), make it normal lower case
-  var t = text.trim().toLowerCase();
-  // drop leading command words so it reads naturally
-  t = t.replace(/^(please|kindly|i want to|i need to|i would like to|can you|could you|ask for|need|want)\s+/,'');
-  t = t.replace(/[.!?]+$/,'');
-  return t;
+// Fix common spelling, fix capitals, add basic punctuation.
+// Keeps the user's own words - does NOT add new sentences.
+function correctText(text) {
+  var t = text.trim().replace(/\s+/g, ' ');
+
+  // common short-form / spelling fixes
+  var fixes = {
+    'u':'you', 'ur':'your', 'r':'are', 'pls':'please', 'plz':'please',
+    'thanx':'thanks', 'thnx':'thanks', 'tmrw':'tomorrow', 'tmr':'tomorrow',
+    'tom':'tomorrow', 'tomm':'tomorrow', 'wl':'will', 'wil':'will',
+    'bcoz':'because', 'bcz':'because', 'coz':'because', 'cuz':'because',
+    'dont':"don't", 'cant':"can't", 'wont':"won't", 'im':"I'm",
+    'i':'I', 'ive':"I've", 'ill':"I'll", 'msg':'message', 'meetin':'meeting',
+    'recieve':'receive', 'tommorow':'tomorrow', 'freind':'friend',
+    'ok':'okay', 'k':'okay', 'gud':'good', 'gd':'good', 'nd':'and'
+  };
+
+  var words = t.split(' ').map(function(w){
+    // separate trailing punctuation so we can match the word
+    var m = w.match(/^([a-zA-Z']+)([.,!?]*)$/);
+    if (!m) return w;
+    var core = m[1], punct = m[2];
+    var low = core.toLowerCase();
+    if (fixes.hasOwnProperty(low)) core = fixes[low];
+    else if (core === core.toUpperCase() && core.length > 1) core = low; // de-shout ALL CAPS
+    return core + punct;
+  });
+
+  var sentence = words.join(' ');
+
+  // split into sentences and capitalize the first letter of each
+  sentence = sentence.replace(/([.!?]\s+|^)([a-z])/g, function(_, pre, ch){
+    return pre + ch.toUpperCase();
+  });
+
+  // capitalize very first letter
+  sentence = sentence.charAt(0).toUpperCase() + sentence.slice(1);
+
+  // fix standalone "i" that lower-casing may have missed
+  sentence = sentence.replace(/\bi\b/g, 'I');
+
+  // add a full stop at the end if there is no punctuation
+  if (!/[.!?]$/.test(sentence)) sentence += '.';
+
+  return sentence;
 }
 
-// build a short subject line from the words (proper Title-ish case)
+// short subject built from the corrected words (max 6 words)
 function makeSubject(text) {
-  var words = text.replace(/[.!?]+$/,'').toLowerCase().split(/\s+/).slice(0, 6);
-  words = words.map(function(w){ return w.charAt(0).toUpperCase() + w.slice(1); });
+  var words = text.replace(/[.!?]+$/,'').split(/\s+/).slice(0, 6);
   return words.join(' ');
 }
 
