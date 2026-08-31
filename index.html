@@ -70,7 +70,7 @@
 <body>
   <div class="wrap">
     <h1>Simple Email Writer</h1>
-    <p class="sub">Type your message. It keeps your words and fixes the grammar and format.</p>
+    <p class="sub">Type your message. It checks the grammar online and formats it as an email.</p>
 
     <label for="to">To (name) — optional</label>
     <input type="text" id="to" placeholder="e.g. John">
@@ -89,7 +89,7 @@
       </span>
     </div>
 
-    <button onclick="makeEmail()">Write Email</button>
+    <button id="writeBtn" onclick="makeEmail()">Write Email</button>
 
     <div class="out" id="out"></div>
     <button class="copy" id="copyBtn" style="display:none;" onclick="copyText()">Copy</button>
@@ -109,6 +109,7 @@ function makeEmail() {
   var pro = document.getElementById('pro').checked;
   var out = document.getElementById('out');
   var copyBtn = document.getElementById('copyBtn');
+  var btn = document.getElementById('writeBtn');
 
   if (idea === '') {
     out.style.display = 'block';
@@ -117,11 +118,59 @@ function makeEmail() {
     return;
   }
 
+  // Show a "checking" state while we call the grammar service
+  out.style.display = 'block';
+  out.textContent = 'Checking grammar...';
+  copyBtn.style.display = 'none';
+  btn.disabled = true;
+
+  // First do quick local spelling fixes, then send to the online grammar checker
+  var pre = correctText(idea);
+
+  checkGrammar(pre).then(function(fixed){
+    buildEmail(fixed, to, from, pro);
+  }).catch(function(){
+    // If offline / service busy, fall back to the local corrected text
+    buildEmail(pre, to, from, pro);
+  }).finally(function(){
+    btn.disabled = false;
+  });
+}
+
+// Call the free LanguageTool public API to fix grammar (no key needed)
+function checkGrammar(text) {
+  var body = 'text=' + encodeURIComponent(text) + '&language=en-US';
+  return fetch('https://api.languagetool.org/v2/check', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: body
+  })
+  .then(function(r){ return r.json(); })
+  .then(function(data){ return applyMatches(text, data.matches || []); });
+}
+
+// Apply the grammar suggestions back into the text (from end to start)
+function applyMatches(text, matches) {
+  matches.sort(function(a, b){ return b.offset - a.offset; });
+  matches.forEach(function(m){
+    if (m.replacements && m.replacements.length > 0) {
+      var rep = m.replacements[0].value;
+      text = text.slice(0, m.offset) + rep + text.slice(m.offset + m.length);
+    }
+  });
+  // capitalize first letter and make sure it ends with a full stop
+  text = text.charAt(0).toUpperCase() + text.slice(1);
+  text = text.replace(/\bi\b/g, 'I');
+  if (!/[.!?]$/.test(text.trim())) text = text.trim() + '.';
+  return text;
+}
+
+function buildEmail(body, to, from, pro) {
+  var out = document.getElementById('out');
+  var copyBtn = document.getElementById('copyBtn');
+
   var name = to ? fixName(to) : 'there';
   var sign = from ? fixName(from) : '[Your name]';
-
-  // Keep the user's OWN words. Just fix grammar, spelling and capitalization.
-  var body = correctText(idea);
   var subject = makeSubject(body);
 
   var greeting = pro ? ('Dear ' + name + ',') : ('Hi ' + name + ',');
