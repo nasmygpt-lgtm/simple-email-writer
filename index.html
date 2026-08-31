@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Simple Email Writer</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: Arial, Helvetica, sans-serif;
+    background: #f4f6f8;
+    color: #222;
+    margin: 0;
+    padding: 20px;
+  }
+  .wrap {
+    max-width: 640px;
+    margin: 0 auto;
+    background: #fff;
+    border-radius: 10px;
+    padding: 24px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+  }
+  h1 { font-size: 22px; margin: 0 0 6px; }
+  p.sub { margin: 0 0 20px; color: #666; font-size: 14px; }
+  label { display: block; font-weight: bold; margin: 14px 0 6px; font-size: 14px; }
+  input[type="text"], textarea {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    font-size: 15px;
+    font-family: inherit;
+  }
+  textarea { resize: vertical; min-height: 80px; }
+  .row { display: flex; gap: 20px; flex-wrap: wrap; align-items: center; margin-top: 14px; }
+  .toggle { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+  button {
+    margin-top: 18px;
+    background: #2563eb;
+    color: #fff;
+    border: none;
+    padding: 12px 20px;
+    font-size: 15px;
+    border-radius: 6px;
+    cursor: pointer;
+  }
+  button:hover { background: #1d4ed8; }
+  .out {
+    margin-top: 22px;
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 16px;
+    white-space: pre-wrap;
+    font-size: 15px;
+    line-height: 1.5;
+    display: none;
+  }
+  .copy {
+    background: #16a34a;
+    padding: 8px 14px;
+    font-size: 13px;
+    margin-top: 12px;
+  }
+  .copy:hover { background: #15803d; }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Simple Email Writer</h1>
+    <p class="sub">Write a few words about what you need. Get a clean, simple email.</p>
+
+    <label for="to">To (name) — optional</label>
+    <input type="text" id="to" placeholder="e.g. John">
+
+    <label for="idea">What do you want to say?</label>
+    <textarea id="idea" placeholder="e.g. ask for leave on friday"></textarea>
+
+    <label for="from">Your name — optional</label>
+    <input type="text" id="from" placeholder="e.g. Sam">
+
+    <div class="row">
+      <span class="toggle">
+        <input type="checkbox" id="pro">
+        <label for="pro" style="margin:0;font-weight:normal;">Make it more professional</label>
+      </span>
+    </div>
+
+    <button onclick="makeEmail()">Write Email</button>
+
+    <div class="out" id="out"></div>
+    <button class="copy" id="copyBtn" style="display:none;" onclick="copyText()">Copy</button>
+  </div>
+
+<script>
+function makeEmail() {
+  var to = document.getElementById('to').value.trim();
+  var idea = document.getElementById('idea').value.trim();
+  var from = document.getElementById('from').value.trim();
+  var pro = document.getElementById('pro').checked;
+  var out = document.getElementById('out');
+  var copyBtn = document.getElementById('copyBtn');
+
+  if (idea === '') {
+    out.style.display = 'block';
+    out.textContent = 'Please write a few words about what you need.';
+    copyBtn.style.display = 'none';
+    return;
+  }
+
+  // Capitalize the first letter of the idea
+  var body = idea.charAt(0).toUpperCase() + idea.slice(1);
+  if (!/[.!?]$/.test(body)) body += '.';
+
+  var greetName = to ? to : 'there';
+  var signName = from ? from : '';
+  var email = '';
+
+  if (pro) {
+    // More professional version
+    email += 'Subject: ' + shortSubject(idea) + '\n\n';
+    email += 'Dear ' + greetName + ',\n\n';
+    email += 'I hope you are doing well. I am writing to let you know that ' + lower(body) + '\n\n';
+    email += 'I would be grateful for your kind attention to this. Please let me know if you need any further information.\n\n';
+    email += 'Best regards,\n' + (signName || '[Your name]');
+  } else {
+    // Simple everyday version
+    email += 'Subject: ' + shortSubject(idea) + '\n\n';
+    email += 'Hi ' + greetName + ',\n\n';
+    email += body + '\n\n';
+    email += 'Please let me know. Thank you.\n\n';
+    email += 'Thanks,\n' + (signName || '[Your name]');
+  }
+
+  out.style.display = 'block';
+  out.textContent = email;
+  copyBtn.style.display = 'inline-block';
+}
+
+function lower(s) {
+  return s.charAt(0).toLowerCase() + s.slice(1);
+}
+
+function shortSubject(text) {
+  var words = text.split(' ').slice(0, 6).join(' ');
+  return words.charAt(0).toUpperCase() + words.slice(1);
+}
+
+function copyText() {
+  var text = document.getElementById('out').textContent;
+  navigator.clipboard.writeText(text).then(function() {
+    var btn = document.getElementById('copyBtn');
+    btn.textContent = 'Copied!';
+    setTimeout(function(){ btn.textContent = 'Copy'; }, 1500);
+  });
+}
+</script>
+</body>
+</html>
