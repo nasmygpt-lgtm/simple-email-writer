@@ -151,17 +151,34 @@ function correctText(text) {
     'dont':"don't", 'cant':"can't", 'wont':"won't", 'im':"I'm",
     'i':'I', 'ive':"I've", 'ill':"I'll", 'msg':'message', 'meetin':'meeting',
     'recieve':'receive', 'tommorow':'tomorrow', 'freind':'friend',
-    'ok':'okay', 'k':'okay', 'gud':'good', 'gd':'good', 'nd':'and'
+    'ok':'okay', 'k':'okay', 'gud':'good', 'gd':'good', 'nd':'and',
+    // more common typos
+    'didnt':"didn't", 'doent':"doesn't", 'doesnt':"doesn't", 'wasnt':"wasn't",
+    'hasnt':"hasn't", 'havent':"haven't", 'isnt':"isn't", 'arent':"aren't",
+    'minuts':'minutes', 'minuts':'minutes', 'appolized':'apologised',
+    'apolized':'apologised', 'veryfication':'verification',
+    'verifcation':'verification', 'dirtly':'dirty', 'housekeeping':'housekeeping',
+    'checkout':'check out', 'checkin':'check in', 'guset':'guest',
+    'teh':'the', 'adn':'and', 'alot':'a lot', 'seperate':'separate',
+    'occured':'occurred', 'definately':'definitely', 'wich':'which'
   };
 
   var words = t.split(' ').map(function(w){
+    // handle ordinal numbers like 30TH, 31ST, 1ST -> 30th, 31st, 1st
+    if (/^\d+(st|nd|rd|th)$/i.test(w)) return w.toLowerCase();
+
     // separate trailing punctuation so we can match the word
     var m = w.match(/^([a-zA-Z']+)([.,!?]*)$/);
     if (!m) return w;
     var core = m[1], punct = m[2];
     var low = core.toLowerCase();
-    if (fixes.hasOwnProperty(low)) core = fixes[low];
-    else if (core === core.toUpperCase() && core.length > 1) core = low; // de-shout ALL CAPS
+    if (fixes.hasOwnProperty(low)) {
+      core = fixes[low];
+    } else if (core === core.toUpperCase() && core.length > 1) {
+      core = low;               // ALL CAPS word -> lower case (e.g. ROOM -> room)
+    } else if (/[a-z].*[A-Z]|[A-Z].*[A-Z]/.test(core) && !/^[A-Z][a-z]+$/.test(core)) {
+      core = low;               // messy mixed case like rOOm -> room
+    }
     return core + punct;
   });
 
