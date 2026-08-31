@@ -214,7 +214,9 @@ function correctText(text) {
 
   var words = t.split(' ').map(function(w){
     // handle ordinal numbers like 30TH, 31ST, 1ST -> 30th, 31st, 1st
-    if (/^\d+(st|nd|rd|th)$/i.test(w)) return w.toLowerCase();
+    // (also works when there is trailing punctuation, e.g. "31ST," -> "31st,")
+    var ord = w.match(/^(\d+)(st|nd|rd|th)([.,!?]*)$/i);
+    if (ord) return ord[1] + ord[2].toLowerCase() + ord[3];
 
     // separate trailing punctuation so we can match the word
     var m = w.match(/^([a-zA-Z']+)([.,!?]*)$/);
